@@ -85,9 +85,9 @@ void loopCore1(void *pvParameters) {
       digitalWrite(HC595_LATCH_PIN, HIGH);
       digitalWrite(HC595_LATCH_PIN, LOW);
       ledcWrite(i, 255);
-      delay(1);
+      ets_delay_us(700);
       ledcWrite(i, 0);
-      delay(1);  //ゴースト対策(仮)
+      ets_delay_us(700); //ゴースト対策
     }
   }
 }
