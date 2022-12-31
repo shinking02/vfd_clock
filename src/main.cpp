@@ -13,7 +13,6 @@ const char time_zone[] = "JST-9";
 void loopCore0(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
 void getTimeArray(int time[6]);
-void IRAM_ATTR onTimer();
 
 hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
@@ -74,12 +73,6 @@ void setup() {
   configTzTime(time_zone, "ntp.nict.jp", "time.google.com", "time.aws.com");
   sntp_set_time_sync_notification_cb(sntpCallBack);  //NTP同期された時に呼び出す関数を指定
 
-  //タイマー割り込み
-  interrupt_timer = timerBegin(0, 80, true);
-  timerAttachInterrupt(interrupt_timer, &onTimer, true);
-  timerAlarmWrite(interrupt_timer, 20000000, true);
-  timerAlarmEnable(interrupt_timer);
-
   xTaskCreatePinnedToCore(loopCore0, "loopCore0", 4096, NULL, 1, NULL, 0);  //core0で関数を開始
 }
 
@@ -125,10 +118,4 @@ void getTimeArray(int time[6]) {
   time[3] = minute() % 10;
   time[4] = (second() / 10) % 10;
   time[5] = second() % 10;
-}
-
-//タイマー割り込みで実行されフラグを立てます
-void IRAM_ATTR onTimer() {
-  Serial.println("interrput");
-  is_interrupt = true;
 }
