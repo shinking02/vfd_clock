@@ -12,7 +12,7 @@ const char pass[] = "*****";
 const char time_zone[] = "JST-9";
 void loopCore0(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
-void getTimeArray(int time[6]);
+char getDigitData(int digit);
 
 hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
@@ -83,10 +83,8 @@ void loop() {
 void loopCore0(void *pvParameters) {
   while(1){
     const unsigned char segment_patterns[] = {0xfc, 0x60, 0xda, 0xf2, 0x66, 0xb6, 0xbe, 0xe4, 0xfe, 0xf6, 0xee, 0x3e, 0x9c, 0x7a, 0x9e, 0x8e};
-    int time[6];
-    getTimeArray(time);
     for(int i = 0; i < NUMBER_OF_LED_DIGITS; i++) {
-      shiftOut(HC595_DATA_PIN, HC595_CLOCK_PIN, LSBFIRST, segment_patterns[time[i]]);
+      shiftOut(HC595_DATA_PIN, HC595_CLOCK_PIN, LSBFIRST, segment_patterns[getDigitData(i)]);
       digitalWrite(HC595_LATCH_PIN, HIGH);
       digitalWrite(HC595_LATCH_PIN, LOW);
       ledcWrite(i, 255);
@@ -110,12 +108,30 @@ void sntpCallBack(struct timeval *tv) {
   }
 }
 
-//LEDのdigit番目に表示する数字をセットします
-void getTimeArray(int time[6]) {
-  time[0] = (hour() / 10) % 10;
-  time[1] = hour() % 10;
-  time[2] = (minute() / 10) % 10;
-  time[3] = minute() % 10;
-  time[4] = (second() / 10) % 10;
-  time[5] = second() % 10;
+//LEDのdigit番目に表示する数字を返却します
+char getDigitData(int digit) {
+  char time = 0;
+  switch(digit) {
+    case 0:
+      time = (hour() / 10) % 10;
+      break;
+    case 1:
+      time = hour() % 10;
+      break;
+    case 2:
+      time = (minute() / 10) % 10;
+      break;
+    case 3:
+      time = minute() % 10;
+      break;
+    case 4:
+      time = (second() / 10) % 10;
+      break;
+    case 5:
+      time = second() % 10;
+      break;
+    default:
+      break;
+  }
+  return time;
 }
