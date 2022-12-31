@@ -13,10 +13,7 @@ const char time_zone[] = "JST-9";
 void loopCore0(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
 char getDigitData(int digit);
-
-hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
-bool is_interrupt = false;
 
 void setup() {
   Serial.begin(115200);
