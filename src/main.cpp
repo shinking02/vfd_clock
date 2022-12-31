@@ -10,7 +10,7 @@
 const char ssid[] = "*****";
 const char pass[] = "*****";
 const char time_zone[] = "JST-9";
-void loopCore0(void *pvParameters);
+void loopCore1(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
 char getDigitData(int digit);
 DS3232RTC myRTC;
@@ -70,14 +70,14 @@ void setup() {
   configTzTime(time_zone, "ntp.nict.jp", "time.google.com", "time.aws.com");
   sntp_set_time_sync_notification_cb(sntpCallBack);  //NTP同期された時に呼び出す関数を指定
 
-  xTaskCreatePinnedToCore(loopCore0, "loopCore0", 4096, NULL, 1, NULL, 0);  //core0で関数を開始
+  xTaskCreatePinnedToCore(loopCore1, "loopCore1", 4096, NULL, 1, NULL, 1);  //core1で関数を開始
 }
 
 void loop() {
 }
 
 //ダイナミック点灯処理
-void loopCore0(void *pvParameters) {
+void loopCore1(void *pvParameters) {
   while(1){
     const unsigned char segment_patterns[] = {0xfc, 0x60, 0xda, 0xf2, 0x66, 0xb6, 0xbe, 0xe4, 0xfe, 0xf6, 0xee, 0x3e, 0x9c, 0x7a, 0x9e, 0x8e};
     for(int i = 0; i < NUMBER_OF_LED_DIGITS; i++) {
