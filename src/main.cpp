@@ -10,10 +10,16 @@
 const char ssid[] = "*****";
 const char pass[] = "*****";
 const char time_zone[] = "JST-9";
+
 void loopCore1(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
 char getDigitData(int digit);
+void IRAM_ATTR onTimer();
+
+hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
+bool is_interrupt = false;
+
 
 void setup() {
   Serial.begin(115200);
@@ -70,10 +76,20 @@ void setup() {
   configTzTime(time_zone, "ntp.nict.jp", "time.google.com", "time.aws.com");
   sntp_set_time_sync_notification_cb(sntpCallBack);  //NTP同期された時に呼び出す関数を指定
 
+  //タイマー割り込み
+  interrupt_timer = timerBegin(0, 80, true);
+  timerAttachInterrupt(interrupt_timer, &onTimer, true);
+  timerAlarmWrite(interrupt_timer, 20000000, true);  //20秒
+  timerAlarmEnable(interrupt_timer);
+
   xTaskCreatePinnedToCore(loopCore1, "loopCore1", 4096, NULL, 1, NULL, 1);  //core1で関数を開始
 }
 
 void loop() {
+  if(is_interrupt) {
+    is_interrupt = false;
+    Serial.println("タイマー割り込み");
+  }
 }
 
 //ダイナミック点灯処理
@@ -87,7 +103,7 @@ void loopCore1(void *pvParameters) {
       ledcWrite(i, 255);
       ets_delay_us(700);
       ledcWrite(i, 0);
-      ets_delay_us(700); //ゴースト対策
+      ets_delay_us(700);  //ゴースト対策
     }
   }
 }
@@ -131,4 +147,10 @@ char getDigitData(int digit) {
       break;
   }
   return time;
+}
+
+//タイマー割り込みで実行されフラグを立てます
+void IRAM_ATTR onTimer() {
+  Serial.println("interrput");
+  is_interrupt = true;
 }
