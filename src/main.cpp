@@ -6,6 +6,9 @@
 #define HC595_LATCH_PIN 5
 #define HC595_CLOCK_PIN 18
 #define HC595_DATA_PIN 19
+#define POTENTIONMETER_PIN 14
+#define CDS_PIN 23
+
 
 const char ssid[] = "*****";
 const char pass[] = "*****";
@@ -15,6 +18,7 @@ void loopCore1(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
 char getDigitData(int digit);
 void IRAM_ATTR onTimer();
+int getPWMFrequencyForBrightness();
 
 hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
@@ -27,6 +31,8 @@ void setup() {
   pinMode(HC595_LATCH_PIN, OUTPUT);
   pinMode(HC595_CLOCK_PIN, OUTPUT);
   pinMode(HC595_DATA_PIN, OUTPUT);
+  pinMode(POTENTIONMETER_PIN, INPUT);
+  pinMode(CDS_PIN, INPUT);
 
   const int LEDC_FREQ = 17800;
   const int LEDC_TIMERBIT = 8;
@@ -153,4 +159,11 @@ char getDigitData(int digit) {
 void IRAM_ATTR onTimer() {
   Serial.println("interrput");
   is_interrupt = true;
+}
+
+//VFDの明るさを変えるPWM周波数を返却します
+int getPWMFrequencyForBrightness() {
+  int brigtness = map(analogRead(POTENTIONMETER_PIN), 0, 4095, 0, 255);
+  if(analogRead(CDS_PIN) > 2000) {brigtness = brigtness * 0.8;}
+  return brigtness;
 }
