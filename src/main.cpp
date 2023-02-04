@@ -103,12 +103,12 @@ void loop() {
 void loopCore1(void *pvParameters) {
   while(1){
     const unsigned char segment_patterns[] = {0xfc, 0x60, 0xda, 0xf2, 0x66, 0xb6, 0xbe, 0xe4, 0xfe, 0xf6, 0xee, 0x3e, 0x9c, 0x7a, 0x9e, 0x8e};
-    int bright = getPWMFrequencyForBrightness();
+    int brightness = getPWMFrequencyForBrightness();
     for(int i = 0; i < NUMBER_OF_LED_DIGITS; i++) {
       shiftOut(HC595_DATA_PIN, HC595_CLOCK_PIN, LSBFIRST, segment_patterns[getDigitData(i)]);
       digitalWrite(HC595_LATCH_PIN, HIGH);
       digitalWrite(HC595_LATCH_PIN, LOW);
-      ledcWrite(i, bright);
+      ledcWrite(i, brightness);
       ets_delay_us(700);
       ledcWrite(i, 0);
       ets_delay_us(700);  //ゴースト対策
