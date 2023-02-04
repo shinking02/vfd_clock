@@ -23,6 +23,7 @@ int getPWMFrequencyForBrightness();
 hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
 bool is_interrupt = false;
+bool is_bright = true;
 
 
 void setup() {
@@ -94,7 +95,7 @@ void setup() {
 void loop() {
   if(is_interrupt) {
     is_interrupt = false;
-    Serial.println("タイマー割り込み");
+    is_bright = (analogRead(CDS_PIN) > 2000);
   }
 }
 
@@ -102,11 +103,12 @@ void loop() {
 void loopCore1(void *pvParameters) {
   while(1){
     const unsigned char segment_patterns[] = {0xfc, 0x60, 0xda, 0xf2, 0x66, 0xb6, 0xbe, 0xe4, 0xfe, 0xf6, 0xee, 0x3e, 0x9c, 0x7a, 0x9e, 0x8e};
+    int bright = getPWMFrequencyForBrightness();
     for(int i = 0; i < NUMBER_OF_LED_DIGITS; i++) {
       shiftOut(HC595_DATA_PIN, HC595_CLOCK_PIN, LSBFIRST, segment_patterns[getDigitData(i)]);
       digitalWrite(HC595_LATCH_PIN, HIGH);
       digitalWrite(HC595_LATCH_PIN, LOW);
-      ledcWrite(i, 255);
+      ledcWrite(i, bright);
       ets_delay_us(700);
       ledcWrite(i, 0);
       ets_delay_us(700);  //ゴースト対策
@@ -164,6 +166,6 @@ void IRAM_ATTR onTimer() {
 //VFDの明るさを変えるPWM周波数を返却します
 int getPWMFrequencyForBrightness() {
   int brigtness = map(analogRead(POTENTIONMETER_PIN), 0, 4095, 0, 255);
-  if(analogRead(CDS_PIN) > 2000) {brigtness = brigtness * 0.8;}
+  if(!is_bright) {brigtness = brigtness * 0.8;}
   return brigtness;
 }
