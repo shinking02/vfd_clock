@@ -6,8 +6,8 @@
 #define HC595_LATCH_PIN 5
 #define HC595_CLOCK_PIN 18
 #define HC595_DATA_PIN 19
-#define POTENTIONMETER_PIN 14
-#define CDS_PIN 23
+#define POTENTIONMETER_PIN 35
+#define CDS_PIN 34
 
 
 const char ssid[] = "*****";
