@@ -86,7 +86,7 @@ void setup() {
   //タイマー割り込み
   interrupt_timer = timerBegin(0, 80, true);
   timerAttachInterrupt(interrupt_timer, &onTimer, true);
-  timerAlarmWrite(interrupt_timer, 20000000, true);  //20秒
+  timerAlarmWrite(interrupt_timer, 12000000, true);  //20秒
   timerAlarmEnable(interrupt_timer);
 
   xTaskCreatePinnedToCore(loopCore1, "loopCore1", 4096, NULL, 1, NULL, 1);  //core1で関数を開始
