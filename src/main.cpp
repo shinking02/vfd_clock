@@ -66,7 +66,7 @@ void setup() {
   }
   if(WiFi.status() != WL_CONNECTED) {
     Serial.println();
-    Serial.print("ERROR: Failed to connect to");
+    Serial.print("ERROR: Failed to connect to ");
     Serial.println(ssid);
   }
 
@@ -95,7 +95,7 @@ void setup() {
 void loop() {
   if(is_interrupt) {
     is_interrupt = false;
-    is_bright = (analogRead(CDS_PIN) > 2000);
+    is_bright = (analogRead(CDS_PIN) > 1200);
   }
 }
 
@@ -159,13 +159,12 @@ char getDigitData(int digit) {
 
 //タイマー割り込みで実行されフラグを立てます
 void IRAM_ATTR onTimer() {
-  Serial.println("interrput");
   is_interrupt = true;
 }
 
 //VFDの明るさを変えるPWM周波数を返却します
 int getPWMFrequencyForBrightness() {
   int brigtness = map(analogRead(POTENTIONMETER_PIN), 0, 4095, 0, 255);
-  if(!is_bright) {brigtness = brigtness * 0.8;}
+  if(!is_bright) {brigtness = brigtness * 0.4;}
   return brigtness;
 }
