@@ -8,14 +8,20 @@
 #define HC595_DATA_PIN 19
 #define POTENTIONMETER_PIN 35
 #define CDS_PIN 34
+#define SW1_PIN 16
+#define SW2_PIN 4
+#define LED1_PIN 27
 
 
-const char ssid[] = "*****";
-const char pass[] = "*****";
+const char ssid[] = "***REMOVED***";
+const char pass[] = "***REMOVED***";
 const char time_zone[] = "JST-9";
 
-void loopCore1(void *pvParameters);
+void core1DynamicLightingLoop(void *pvParameters);
+void core1DynamicLightingLoopSetRTCMode(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
+void checkStatus();
+bool connectToWifi();
 char getDigitData(int digit);
 void IRAM_ATTR onTimer();
 int getPWMFrequencyForBrightness();
@@ -24,16 +30,21 @@ hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
 bool is_interrupt = false;
 bool is_bright = true;
+int interrupts_count = 500;
 
 
 void setup() {
   Serial.begin(115200);
+  myRTC.begin();
   
   pinMode(HC595_LATCH_PIN, OUTPUT);
   pinMode(HC595_CLOCK_PIN, OUTPUT);
   pinMode(HC595_DATA_PIN, OUTPUT);
+  pinMode(LED1_PIN, OUTPUT);
   pinMode(POTENTIONMETER_PIN, INPUT);
   pinMode(CDS_PIN, INPUT);
+  pinMode(SW1_PIN, INPUT_PULLUP);
+  pinMode(SW2_PIN, INPUT_PULLUP);
 
   const int LEDC_FREQ = 17800;
   const int LEDC_TIMERBIT = 8;
@@ -51,33 +62,8 @@ void setup() {
   ledcAttachPin(32, 4);
   ledcAttachPin(33, 5);
 
-  //WiFi接続処理
-  Serial.print("WiFi connecting");
-  WiFi.begin(ssid, pass);
-  for(int i = 0; i < 10; i++) {
-    if(WiFi.status() == WL_CONNECTED) {
-      Serial.println();
-      Serial.println("Connected!");
-      break;
-    }else {
-      Serial.print(".");
-      delay(500);
-    }
-  }
-  if(WiFi.status() != WL_CONNECTED) {
-    Serial.println();
-    Serial.print("ERROR: Failed to connect to ");
-    Serial.println(ssid);
-  }
-
-  //外部RTCから時刻を読み出し内部RTCにセット(NTPが使えない場合を想定)
-  myRTC.begin();
+  connectToWifi();
   setSyncProvider(myRTC.get);
-  if(timeStatus() != timeSet) {
-      Serial.println("ERROR: Unable to sync with the RTC");
-  }else {
-      Serial.println("RTC has set the system time");
-  }
 
   //NTPで時刻を取得
   configTzTime(time_zone, "ntp.nict.jp", "time.google.com", "time.aws.com");
@@ -86,21 +72,27 @@ void setup() {
   //タイマー割り込み
   interrupt_timer = timerBegin(0, 80, true);
   timerAttachInterrupt(interrupt_timer, &onTimer, true);
-  timerAlarmWrite(interrupt_timer, 8000000, true);  //8秒
+  timerAlarmWrite(interrupt_timer, 6000000, true);  //6秒
   timerAlarmEnable(interrupt_timer);
 
-  xTaskCreatePinnedToCore(loopCore1, "loopCore1", 4096, NULL, 1, NULL, 1);  //core1で関数を開始
+  xTaskCreatePinnedToCore(core1DynamicLightingLoop, "core1DynamicLightingLoop", 4096, NULL, 1, NULL, 1);  //core1で関数を開始
+
+  delay(2000);
+  checkStatus();
 }
 
 void loop() {
+  if(digitalRead(SW1_PIN) == LOW && digitalRead(SW2_PIN) == LOW) {
+  }
   if(is_interrupt) {
     is_interrupt = false;
-    is_bright = (analogRead(CDS_PIN) > 1200);
+    checkStatus();
   }
+  delay(80);
 }
 
 //ダイナミック点灯処理
-void loopCore1(void *pvParameters) {
+void core1DynamicLightingLoop(void *pvParameters) {
   while(1){
     const unsigned char segment_patterns[] = {0xfc, 0x60, 0xda, 0xf2, 0x66, 0xb6, 0xbe, 0xe4, 0xfe, 0xf6, 0xee, 0x3e, 0x9c, 0x7a, 0x9e, 0x8e};
     int brightness = getPWMFrequencyForBrightness();
@@ -116,17 +108,12 @@ void loopCore1(void *pvParameters) {
   }
 }
 
-//NTPで時刻の取得に成功したらNTP->内部RTC->外部RTCの順にセットします
+//NTPで時刻の取得に成功したら呼び出され、NTP->内部RTC->外部RTCの順にセットします
 void sntpCallBack(struct timeval *tv) {
-  if(sntp_get_sync_status() == SNTP_SYNC_STATUS_COMPLETED) {
     struct tm time;
     getLocalTime(&time);
     setTime(time.tm_hour, time.tm_min, time.tm_sec, time.tm_mday, time.tm_mon + 1, time.tm_year + 1900);
     myRTC.set(now());
-    Serial.println("RTC and SystemRTC has been synchronized with NTP");
-  }else {
-    Serial.println("ERROR: NTP process was failed");
-  }
 }
 
 //LEDのdigit番目に表示する数字を返却します
@@ -167,4 +154,36 @@ int getPWMFrequencyForBrightness() {
   int brigtness = map(analogRead(POTENTIONMETER_PIN), 0, 4095, 0, 255);
   if(!is_bright) {brigtness = brigtness * 0.4;}
   return brigtness;
+}
+
+//現在の状態を確認しそれに応じて動きます
+void checkStatus() {
+  interrupts_count++;
+  is_bright = (analogRead(CDS_PIN) > 1200);
+  digitalWrite(LED1_PIN, (WiFi.status() != WL_CONNECTED));
+  if(interrupts_count == 500) {
+    interrupts_count = 0;
+    if(WiFi.status() != WL_CONNECTED) {
+      if(connectToWifi()) {
+        sntp_restart();
+      }else {
+        WiFi.disconnect();
+        sntp_stop();
+        setSyncProvider(myRTC.get);
+      }
+    }
+  }
+}
+
+//WiFiの接続処理をし、結果を返却します
+bool connectToWifi() {
+  WiFi.begin(ssid, pass);
+  for(int i = 0; i < 20; i++) {
+    if(WiFi.status() == WL_CONNECTED) {
+      return true;
+    }else {
+      delay(200);
+    }
+  }
+  return false;
 }
