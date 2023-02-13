@@ -21,6 +21,8 @@ void core1DynamicLightingLoop(void *pvParameters);
 void core1DynamicLightingLoopSetRTCMode(void *pvParameters);
 void sntpCallBack(struct timeval *tv);
 void checkStatus();
+void setTimeManually();
+void settArrayFromTime(int time);
 bool connectToWifi();
 char getDigitData(int digit);
 void IRAM_ATTR onTimer();
@@ -28,9 +30,14 @@ int getPWMFrequencyForBrightness();
 
 hw_timer_t *interrupt_timer = NULL;
 DS3232RTC myRTC;
+TaskHandle_t taskHandle[2];
 bool is_interrupt = false;
 bool is_bright = true;
 int interrupts_count = 500;
+
+//時刻を手動で設定するときに使用します
+int target_digit = 0;
+int tmp_time[6];
 
 
 void setup() {
@@ -75,7 +82,7 @@ void setup() {
   timerAlarmWrite(interrupt_timer, 6000000, true);  //6秒
   timerAlarmEnable(interrupt_timer);
 
-  xTaskCreatePinnedToCore(core1DynamicLightingLoop, "core1DynamicLightingLoop", 4096, NULL, 1, NULL, 1);  //core1で関数を開始
+  xTaskCreatePinnedToCore(core1DynamicLightingLoop, "core1DynamicLightingLoop", 4096, NULL, 1, &taskHandle[0], 1);  //core1で関数を開始
 
   delay(2000);
   checkStatus();
@@ -83,12 +90,13 @@ void setup() {
 
 void loop() {
   if(digitalRead(SW1_PIN) == LOW && digitalRead(SW2_PIN) == LOW) {
+    delay(200);
+    setTimeManually();
   }
   if(is_interrupt) {
     is_interrupt = false;
     checkStatus();
   }
-  delay(80);
 }
 
 //ダイナミック点灯処理
@@ -186,4 +194,70 @@ bool connectToWifi() {
     }
   }
   return false;
+}
+
+//時刻を手動で設定します
+void setTimeManually() {
+  vTaskDelete(taskHandle[0]);
+  delay(100);
+  xTaskCreatePinnedToCore(core1DynamicLightingLoopSetRTCMode, "core1DynamicLightingLoopSetRTCMode", 4096, NULL, 1, &taskHandle[1], 1);  //core1で関数を開始
+
+  int digit = 0;
+  int time = 0;
+  for(int i = 0; i < 6; i++) {
+    tmp_time[i] = getDigitData(i);
+  }
+  while(!(digitalRead(SW1_PIN) == LOW && digitalRead(SW2_PIN) == LOW)) {
+    time = tmp_time[target_digit * 2] * 10 + tmp_time[(target_digit * 2) + 1];
+    if(digitalRead(SW1_PIN) == LOW) {
+      settArrayFromTime(time);
+      digit++;
+      target_digit = digit % 3;
+      time = tmp_time[target_digit * 2] * 10 + tmp_time[(target_digit * 2) + 1];
+      delay(120);
+    }
+    
+    if(digitalRead(SW2_PIN) == LOW) {
+      if((target_digit == 0 && time == 24) || time == 59) {
+        time = 0;
+      }else {
+        time++;
+      }
+      delay(120);
+    }
+
+    settArrayFromTime(time);
+  }
+  setTime(tmp_time[0] * 10 + tmp_time[1], tmp_time[2] * 10 + tmp_time[3], tmp_time[4] * 10 + tmp_time[5], 1, 1, 1);
+  vTaskDelete(taskHandle[1]);
+  xTaskCreatePinnedToCore(core1DynamicLightingLoop, "core1DynamicLightingLoop", 4096, NULL, 1, &taskHandle[0], 1);  //core1で関数を開始
+  myRTC.set(now());
+  delay(200);
+}
+
+void settArrayFromTime(int time) {
+  int a = 0;
+  if(time >= 10) {a = time / 10;}
+  int b = time % 10;
+  tmp_time[target_digit * 2] = a;
+  tmp_time[(target_digit * 2 + 1)] = b;
+}
+
+//時刻を手動で設定する際に使用されます
+void core1DynamicLightingLoopSetRTCMode(void *pvParameters) {
+  while(1) {
+    const unsigned char segment_patterns[] = {0xfc, 0x60, 0xda, 0xf2, 0x66, 0xb6, 0xbe, 0xe4, 0xfe, 0xf6, 0xee, 0x3e, 0x9c, 0x7a, 0x9e, 0x8e};
+    int brightness_array[6] = {};
+    brightness_array[target_digit * 2] = 255;         //光らせる桁を指定
+    brightness_array[(target_digit * 2) + 1] = 255;
+    for(int i = 0; i < NUMBER_OF_LED_DIGITS; i++) {
+      shiftOut(HC595_DATA_PIN, HC595_CLOCK_PIN, LSBFIRST, segment_patterns[tmp_time[i]]);
+      digitalWrite(HC595_LATCH_PIN, HIGH);
+      digitalWrite(HC595_LATCH_PIN, LOW);
+      ledcWrite(i, brightness_array[i]);
+      ets_delay_us(700);
+      ledcWrite(i, 0);
+      ets_delay_us(700);  //ゴースト対策
+    }
+  }
 }
