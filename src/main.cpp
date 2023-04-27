@@ -13,9 +13,9 @@
 #define LED1_PIN 27
 
 
-const char ssid[] = "***REMOVED***";
-const char pass[] = "***REMOVED***";
-const char time_zone[] = "JST-9";
+const char* ssid = getenv("WIFI_SSID");
+const char* pass = getenv("WIFI_PASSWORD");
+const char* time_zone = getenv("TIME_ZONE");
 
 void core1DynamicLightingLoop(void *pvParameters);
 void core1DynamicLightingLoopSetRTCMode(void *pvParameters);
