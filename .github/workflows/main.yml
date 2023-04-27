@@ -20,7 +20,7 @@ jobs:
         
     - name: Make src directory readable
       run: |
-        chmod -R 755 src
+        chmod -R 755 src/
 
     - name: Run cpplint
       run: |
