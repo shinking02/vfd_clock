@@ -1,18 +1,24 @@
-name: cpplint
+name: My CI
 
-on: push
+on: [push]
 
 jobs:
-  cpplint:
+  build:
     runs-on: ubuntu-latest
+
     steps:
-    - name: Checkout
+    - name: Checkout code
       uses: actions/checkout@v2
-    - name: Install cpplint
+      
+    - name: Install pip
       run: |
         sudo apt-get update
-        sudo apt-get install -y python-pip
-        pip install cpplint
+        sudo apt-get install python3-pip -y
+      
+    - name: Install Python packages
+      run: |
+        pip3 install -r requirements.txt
+
     - name: Run cpplint
       run: |
-        bash cpplint.sh
+        cpplint.sh
