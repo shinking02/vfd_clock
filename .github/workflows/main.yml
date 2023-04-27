@@ -16,4 +16,4 @@ jobs:
 
     - name: Run cpplint
       run: |
-        cpplint.sh
+        ./cpplint.sh
