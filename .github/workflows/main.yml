@@ -17,7 +17,11 @@ jobs:
     - name: Make cpplint.sh executable
       run: |
         chmod +x cpplint.sh
+        
+    - name: Make src directory readable
+      run: |
+        chmod -R 755 src
 
     - name: Run cpplint
       run: |
-        ./cpplint.sh /*.cpp
+        ./cpplint.sh src/*.cpp
