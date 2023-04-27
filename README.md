@@ -17,7 +17,7 @@ ESP32とVFD管を使用した時計です。
     └── main.cpp
 ```
 ## 開発
-VSCodeとPlatformIOを使用しています
+VSCodeとPlatformIOを使用しています<br>
 SSIDなどは.envファイルに記載してください
 ### ダウンロード
 ```shell
