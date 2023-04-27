@@ -14,6 +14,10 @@ jobs:
       run: |
         pip3 install cpplint
 
+    - name: Make cpplint.sh executable
+      run: |
+        chmod +x cpplint.sh
+
     - name: Run cpplint
       run: |
-        ./cpplint.sh
+        ./cpplint.sh **/*.cpp
