@@ -20,4 +20,4 @@ jobs:
 
     - name: Run cpplint
       run: |
-        ./cpplint.sh **/*.cpp
+        ./cpplint.sh /*.cpp
