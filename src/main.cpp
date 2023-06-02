@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <sntp.h>
 #include <DS3232RTC.h>  //https://github.com/JChristensen/DS3232RTC
+#include "Secrets.h"
 #define NUMBER_OF_LED_DIGITS 6
 #define HC595_LATCH_PIN 5
 #define HC595_CLOCK_PIN 18
@@ -13,9 +14,9 @@
 #define LED1_PIN 27
 
 
-const char* ssid = getenv("WIFI_SSID");
-const char* pass = getenv("WIFI_PASSWORD");
-const char* time_zone = getenv("TIME_ZONE");
+const char* ssid = WiFi_SSID;
+const char* pass = WiFi_PASS;
+const char* time_zone = "JST-9";
 
 void core1DynamicLightingLoop(void *pvParameters);
 void core1DynamicLightingLoopSetRTCMode(void *pvParameters);
@@ -23,7 +24,6 @@ void sntpCallBack(struct timeval *tv);
 void checkStatus();
 void setTimeManually();
 void settArrayFromTime(int time);
-bool connectToWifi();
 char getDigitData(int digit);
 void IRAM_ATTR onTimer();
 int getPWMFrequencyForBrightness();
@@ -69,7 +69,11 @@ void setup() {
   ledcAttachPin(32, 4);
   ledcAttachPin(33, 5);
 
-  connectToWifi();
+  WiFi.begin(ssid, pass);
+  unsigned long startTime = millis();
+  while (WiFi.status() != WL_CONNECTED && (millis() - startTime) <= 5000){
+    delay(500);
+  }
   setSyncProvider(myRTC.get);
 
   //NTPで時刻を取得
@@ -169,31 +173,16 @@ void checkStatus() {
   interrupts_count++;
   is_bright = (analogRead(CDS_PIN) > 1200);
   digitalWrite(LED1_PIN, (WiFi.status() != WL_CONNECTED));
-  if(interrupts_count == 500) {
-    interrupts_count = 0;
-    if(WiFi.status() != WL_CONNECTED) {
-      if(connectToWifi()) {
-        sntp_restart();
-      }else {
-        WiFi.disconnect();
+    if(WiFi.status() != WL_CONNECTED && interrupts_count == 500) {
+      interrupts_count = 0;
+      WiFi.disconnect();
+      WiFi.reconnect();
+      sntp_restart();
+      if(WiFi.status() != WL_CONNECTED) {
         sntp_stop();
         setSyncProvider(myRTC.get);
       }
-    }
   }
-}
-
-//WiFiの接続処理をし、結果を返却します
-bool connectToWifi() {
-  WiFi.begin(ssid, pass);
-  for(int i = 0; i < 20; i++) {
-    if(WiFi.status() == WL_CONNECTED) {
-      return true;
-    }else {
-      delay(200);
-    }
-  }
-  return false;
 }
 
 //時刻を手動で設定します
