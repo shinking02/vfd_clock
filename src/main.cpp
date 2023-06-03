@@ -174,14 +174,14 @@ void checkStatus() {
   is_bright = (analogRead(CDS_PIN) > 1200);
   digitalWrite(LED1_PIN, (WiFi.status() != WL_CONNECTED));
     if(WiFi.status() != WL_CONNECTED && interrupts_count == 500) {
-      interrupts_count = 0;
-      WiFi.disconnect();
-      WiFi.reconnect();
-      sntp_restart();
-      if(WiFi.status() != WL_CONNECTED) {
-        sntp_stop();
-        setSyncProvider(myRTC.get);
-      }
+    interrupts_count = 0;
+    WiFi.disconnect();
+    WiFi.reconnect();
+    sntp_restart();
+    if(WiFi.status() != WL_CONNECTED) {
+      sntp_stop();
+      setSyncProvider(myRTC.get);
+    }
   }
 }
 
