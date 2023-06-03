@@ -173,7 +173,7 @@ void checkStatus() {
   interrupts_count++;
   is_bright = (analogRead(CDS_PIN) > 1200);
   digitalWrite(LED1_PIN, (WiFi.status() != WL_CONNECTED));
-    if(WiFi.status() != WL_CONNECTED && interrupts_count == 500) {
+  if(WiFi.status() != WL_CONNECTED && interrupts_count == 500) {
     interrupts_count = 0;
     WiFi.disconnect();
     WiFi.reconnect();
