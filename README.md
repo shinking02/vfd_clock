@@ -18,7 +18,7 @@ ESP32とVFD管を使用した時計です。
 ```
 ## 開発
 VSCodeとPlatformIOを使用しています<br>
-SSIDなどは.envファイルに記載してください
+SSIDなどは `lib/Secrets_example.h` を参考にSecrets.hを作成し、記述してください。
 ### ダウンロード
 ```shell
 git clone https://github.com/shinking02/vfd_clock.git
